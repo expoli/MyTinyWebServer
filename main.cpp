@@ -58,9 +58,15 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     char *end;
-    long port = strtol(argv[1], &end, 10);
+    /**
+     * 第二个才是端口，原代码写错了，同时没有对指定 ip 进行处理
+     * todo 可以考虑提一个 pr
+     */
+    long port = strtol(argv[2], &end, 10);
+    LOG_INFO("listen port: %ld\n", port);
+    Log::get_instance()->flush();
     if (errno) {
-        LOG_ERROR("%s", errno);
+        printf("%d", errno);
         throw std::exception();
     }
     /**
@@ -148,6 +154,8 @@ int main(int argc, char *argv[]) {
      */
     alarm(TIMESLOT);
 
+    LOG_INFO("%s", "Server running...");
+    Log::get_instance()->flush();
     while (!stop_server) {
         /**
          * 获取 epoll 事件触发数目
@@ -158,7 +166,8 @@ int main(int argc, char *argv[]) {
          * todo EINTR 错误信息是什么，代表什么
          */
         if (number < 0 && errno != EINTR) {
-            LOG_ERROR("%s", "epoll runtime failure!");
+            printf("%s", "epoll runtime failure!");
+            LOG_ERROR("%s","epoll runtime failure!");
             break;
         }
 

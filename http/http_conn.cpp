@@ -60,19 +60,19 @@ void add_fd(int epoll_fd, int fd, bool one_shot) {
     // 将要配置的描述符，加入到事件里面的数据部分
     event.data.fd = fd;
 
-#ifdef connfdET
+#ifdef conn_fdET
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 #endif
 
-#ifdef connfdLT
+#ifdef conn_fdLT
     event.events = EPOLLIN | EPOLLRDHUP;
 #endif
 
-#ifdef listenfdET
+#ifdef listen_fdET
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
 #endif
 
-#ifdef listenfdLT
+#ifdef listen_fdLT
     event.events = EPOLLIN | EPOLLRDHUP;
 #endif
     // 如果配置 one_shot 再配置上 one shot 配置
@@ -148,6 +148,7 @@ void http_conn::init(int socket_fd, const sockaddr_in &addr) {
     add_fd(m_epoll_fd, socket_fd, true);
     m_user_count++;
     init();
+    LOG_DEBUG("%s now have %d users!", "init connection done!", m_user_count);
 }
 
 /**
@@ -181,7 +182,7 @@ void http_conn::init() {
 
 http_conn::LINE_STATUS http_conn::parse_line() {
     char temp;
-
+    LOG_DEBUG("%s", "parse_line start!");
     // 在还未监测完缓存区中的所有字符时，依次对缓存区内容
     for (; m_checked_idx < m_read_idx; ++m_checked_idx) {
         temp = m_read_buf[m_checked_idx];
@@ -231,13 +232,13 @@ bool http_conn::read_once() {
  */
 #ifdef conn_fdLT
     // 从客户端 socket 连接里读取数据
-    bytes_read = recv(m_socket_fd,m_read_buf+m_read_idx,READ_BUFFER_SIZE-m_read_idx,0);
+    bytes_read = recv(m_socket_fd, m_read_buf + m_read_idx, READ_BUFFER_SIZE - m_read_idx, 0);
     // 调用 recv 失败，进行错误处理
-    if (bytes_read <= 0){
+    if (bytes_read <= 0) {
         return false;
     }
 
-    m_read_idx+=bytes_read;
+    m_read_idx += bytes_read;
     return true;
 #endif
 
@@ -305,7 +306,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
      * 即找到 url 开始的地方
      *
      * GET /home.html HTTP/1.1
-     *               *(m_url)
+     *     *(m_url)
      */
     m_url += strspn(m_url, " \t");
 
@@ -316,7 +317,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
      *
      * 即滑动到 http 版本部分的字符串部分。
      * GET /home.html HTTP/1.1
-     *                        *(m_version)
+     *               *(m_version)
      */
     m_version = strpbrk(m_url, " \t");
 
@@ -325,11 +326,11 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
     /**
      * 加上 null 字符封装成字符串，即将 m_url 封装成字符串
      * GET /home.html HTTP/1.1
-     *                        \0
+     *               \0
      */
     *m_version++ = '\0';
     /**
-     *
+     * 不进行改变了
      */
     m_version += strspn(m_version, " \t");
     if (strcasecmp(m_version, "HTTP/1.1") != 0)
@@ -368,12 +369,14 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
 http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
     /**
      * 请求头解析完毕？
+     * todo post 与 get 请求并没有区分，需要修改
      */
     if (text[0] == '\0') {
         if (m_content_length != 0) {
             m_check_state = CHECK_STATE_CONTENT;
             return REQUEST_NO;
         }
+        m_check_state = CHECK_STATE_CONTENT;
         return REQUEST_GET;
     } // 解析请求头中的 Connection: 行
     else if (strncasecmp(text, "Connection:", 11) == 0) {
@@ -449,15 +452,26 @@ http_conn::HTTP_CODE http_conn::process_read() {
                 if (ret == REQUEST_BAD)
                     return REQUEST_BAD;
                 break;
-            } // 状态机：检查内容
+            }
+            // 状态机：POST 检查内容
+            /**
+             * todo 这种处理方式还不太合理，后面还需要进行优化处理
+             * 可以考虑增加状态机状态， 或者使用 m_method 进行分类处理
+             */
             case CHECK_STATE_CONTENT: {
-                ret = parse_content(text);
-                if (ret == REQUEST_GET)
+                LOG_DEBUG("%s", "CHECK_STATE_CONTENT");
+                if (m_method == GET){
                     return do_request();
-                line_status = LINE_OPEN;
-                break;
+                } else if (m_method == POST){
+                    ret = parse_content(text);
+                    if (ret == REQUEST_GET)
+                        return do_request();
+                    line_status = LINE_OPEN;
+                    break;
+                }
             }
             default:
+                LOG_ERROR("%s", "process_read error! INTERNAL_ERROR");
                 return INTERNAL_ERROR;
         }
     }
@@ -632,7 +646,7 @@ bool http_conn::process_write(HTTP_CODE ret) {
                 return false;
             break;
         }
-        case REQUEST_BAD: {
+        case REQUEST_NO_RESOURCE: {
             add_status_line(404, error_404_title);
             add_headers(strlen(error_404_form));
             if (!add_content(error_404_form))
