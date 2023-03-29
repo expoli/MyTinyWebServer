@@ -36,27 +36,30 @@ private:
 
 private:
     Log();
+
     virtual ~Log();
+
     /**
      * 异步写日志，内联函数
      */
-    void * async_write_log(){
+    void *async_write_log() {
         std::string single_log;
         /**
          * 当队列不为空的时候，从队列中取出并写入文件描述符
          */
-        while (m_log_queue->pop(single_log)){
+        while (m_log_queue->pop(single_log)) {
             m_mutex.lock();
-            fputs(single_log.c_str(),m_fp);
+            fputs(single_log.c_str(), m_fp);
             m_mutex.unlock();
         }
     }
+
 public:
     /**
      * C++11以后,使用局部变量懒汉不用加锁
      * @return 单例应用
      */
-    static Log* get_instance(){
+    static Log *get_instance() {
         static Log instance;
         return &instance;
     }
@@ -66,9 +69,10 @@ public:
      * @param args 函数参数
      * @return
      */
-    static void * flush_log_thread(void *args){
+    static void *flush_log_thread(void *args) {
         Log::get_instance()->async_write_log();
     }
+
     /**
      * 可选择的参数有日志文件、日志缓冲区大小、最大行数以及最长日志条队列
      * @param file_name 日志文件名
@@ -77,7 +81,8 @@ public:
      * @param max_queue_size 最长日志条队列
      * @return
      */
-    bool init(const char *file_name, int log_buf_size = LOG_BUFF_SIZE, int split_lines = LOG_SPLIT_LINES, int max_queue_size = MAX_QUEUE_SIZE);
+    bool init(const char *file_name, int log_buf_size = LOG_BUFF_SIZE, int split_lines = LOG_SPLIT_LINES,
+              int max_queue_size = LOG_MAX_QUEUE_SIZE);
 
     void write_log(int level, const char *format, ...);
 

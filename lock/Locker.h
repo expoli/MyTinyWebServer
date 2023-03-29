@@ -16,8 +16,7 @@ class Locker {
     pthread_mutex_t m_mutex{};
 public:
     // pthread_mutex_init函数用于初始化互斥锁
-    Locker()
-    {
+    Locker() {
         if (pthread_mutex_init(&m_mutex, nullptr) != 0)
             throw std::exception();
     }
@@ -43,8 +42,7 @@ class Cond {
     pthread_cond_t m_cond{};
 
 public:
-    Cond()
-    {
+    Cond() {
         // pthread_cond_init函数用于初始化条件变量
         if (pthread_cond_init(&m_cond, nullptr) != 0)
             throw std::exception();
@@ -62,9 +60,11 @@ public:
      * @param m_mutex
      * @return
      */
-    bool wait(pthread_mutex_t *m_mutex) { return pthread_cond_wait(&m_cond,m_mutex) == 0; }
+    bool wait(pthread_mutex_t *m_mutex) { return pthread_cond_wait(&m_cond, m_mutex) == 0; }
 
-    bool time_wait(pthread_mutex_t *m_mutex, struct timespec t) { return pthread_cond_timedwait(&m_cond,m_mutex,&t) == 0; }
+    bool time_wait(pthread_mutex_t *m_mutex, struct timespec t) {
+        return pthread_cond_timedwait(&m_cond, m_mutex, &t) == 0;
+    }
 
     bool signal() { return pthread_cond_signal(&m_cond) == 0; }
 
@@ -79,17 +79,15 @@ class Sem {
     // 信号量
     sem_t m_sem{};
 public:
-    Sem()
-    {
+    Sem() {
         // sem_init函数用于初始化一个未命名的信号量
-        if (sem_init(&m_sem,0,0) != 0)
+        if (sem_init(&m_sem, 0, 0) != 0)
             throw std::exception();
     }
 
     // 单参数构造函数必须标记为显式以避免无意的隐式转换
-    explicit Sem(int num)
-    {
-        if (sem_init(&m_sem,0,num) != 0)
+    explicit Sem(int num) {
+        if (sem_init(&m_sem, 0, num) != 0)
             throw std::exception();
     }
 
@@ -100,6 +98,7 @@ public:
     bool wait() { return sem_wait(&m_sem) == 0; }
 
     // sem_post函数以原子操作方式将信号量加一,信号量大于0时,唤醒调用sem_post的线程
-    bool post() { return sem_post(&m_sem) ==0; }
+    bool post() { return sem_post(&m_sem) == 0; }
 };
+
 #endif //MYTINYWEBSERVER_LOCKER_H

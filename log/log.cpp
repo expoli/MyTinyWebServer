@@ -21,7 +21,7 @@ Log::Log() {
  * 析构函数，处理文件指针
  */
 Log::~Log() {
-    if (m_fp!= nullptr){
+    if (m_fp != nullptr) {
         fclose(m_fp);
     }
     // 释放日志缓存
@@ -39,7 +39,7 @@ Log::~Log() {
  */
 bool Log::init(const char *file_name, int log_buf_size, int split_lines, int max_queue_size) {
     // 如果设置了 max_queue_size,则设置为异步
-    if (max_queue_size >= 1){
+    if (max_queue_size >= 1) {
         m_is_async = true;
         m_log_queue = new BlockQueue<std::string>(max_queue_size);
 
@@ -47,14 +47,14 @@ bool Log::init(const char *file_name, int log_buf_size, int split_lines, int max
         /**
          * flush_log_thread为回调函数,这里表示创建线程异步写日志
          */
-        pthread_create(&tid, nullptr,flush_log_thread, nullptr);
+        pthread_create(&tid, nullptr, flush_log_thread, nullptr);
     }
     /**
      * 初始化日志缓存区
      */
     m_log_buf_size = log_buf_size;
-    m_buf = new char [m_log_buf_size];
-    memset(m_buf, '\0',m_log_buf_size);
+    m_buf = new char[m_log_buf_size];
+    memset(m_buf, '\0', m_log_buf_size);
     m_split_lines = split_lines;
     /**
      * 记录初始化时间
@@ -70,25 +70,27 @@ bool Log::init(const char *file_name, int log_buf_size, int split_lines, int max
      * 因此，它也可以定位到检索指向字符串末尾的指针。
      * a/c/d/aaa.log
      */
-    const char *p = strrchr(file_name,'/');
+    const char *p = strrchr(file_name, '/');
     // 保存日志全部的名称
     char log_full_name[256] = {0};
     /**
      * 年_月_日_filename
      */
-    if (p == nullptr){
-        snprintf(log_full_name,255,"%d_%02d_%02d_%s",my_tm.tm_year+1900,my_tm.tm_mon + 1, my_tm.tm_mday, file_name);
+    if (p == nullptr) {
+        snprintf(log_full_name, 255, "%d_%02d_%02d_%s", my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday,
+                 file_name);
     } else {
         // 日志文件名字
         strcpy(m_log_name, p + 1);
         // 将文件名除最后的日志名之外的所有字符串当作文件夹名字
-        strncpy(m_dir_name,file_name,p-file_name+1);
-        snprintf(log_full_name, 255, "%s/%d_%02d_%02d_%s", m_dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, m_log_name);
+        strncpy(m_dir_name, file_name, p - file_name + 1);
+        snprintf(log_full_name, 255, "%s/%d_%02d_%02d_%s", m_dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1,
+                 my_tm.tm_mday, m_log_name);
     }
 
     m_today = my_tm.tm_mday;
     // 以追加的方式打开日志文件
-    m_fp = fopen(log_full_name,"a");
+    m_fp = fopen(log_full_name, "a");
     if (m_fp == nullptr)
         return false;
     return true;
@@ -110,8 +112,7 @@ void Log::write_log(int level, const char *format, ...) {
 
     char s[16] = {0};
 
-    switch (level)
-    {
+    switch (level) {
         case 0:
             strcpy(s, "[debug]:");
             break;
@@ -136,7 +137,7 @@ void Log::write_log(int level, const char *format, ...) {
     /**
      * 对日志按日期进行分类
      */
-    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0){
+    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) {
         char new_log[256] = {0};
         /*
          * 刷新缓存区内容，并关闭原来的文件描述符
@@ -147,11 +148,11 @@ void Log::write_log(int level, const char *format, ...) {
 
         snprintf(tail, 15, "%d_%02d_%02d_", my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday);
 
-        if (m_today != my_tm.tm_mday){
+        if (m_today != my_tm.tm_mday) {
             snprintf(new_log, 255, "%s/%s%s", m_dir_name, tail, m_log_name);
             m_today = my_tm.tm_mday;
             m_count = 0;
-        } else{
+        } else {
             snprintf(new_log, 255, "%s/%s%s.%lld", m_dir_name, tail, m_log_name, m_count / m_split_lines);
         }
         m_fp = fopen(new_log, "a");
@@ -181,18 +182,17 @@ void Log::write_log(int level, const char *format, ...) {
     /**
      * 异步写入、但是队列未满，将 log 字符串压入队列
      */
-    if (m_is_async && !m_log_queue->full()){
+    if (m_is_async && !m_log_queue->full()) {
         m_log_queue->push(log_str);
-    } else{
+    } else {
         m_mutex.lock();
-        fputs(log_str.c_str(),m_fp);
+        fputs(log_str.c_str(), m_fp);
         m_mutex.unlock();
     }
     va_end(args);
 }
 
-void Log::flush()
-{
+void Log::flush() {
     m_mutex.lock();
     //强制刷新写入流缓冲区
     fflush(m_fp);
