@@ -352,7 +352,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
         return REQUEST_BAD;
     // todo 当 url 为 / 时，显示判断界面，应该是直接跳转 index.html，需要修改
     if (strlen(m_url) == 1)
-        strcat(m_url, "judge.html");
+        strcat(m_url, "index.html");
     /**
      * 请求行判断完毕，下面需要进行请求头的判断
      */
@@ -368,7 +368,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text) {
  */
 http_conn::HTTP_CODE http_conn::parse_headers(char *text) {
     /**
-     * 请求头解析完毕？
+     * 请求头解析完毕
      * todo post 与 get 请求并没有区分，需要修改
      */
     if (text[0] == '\0') {
@@ -449,8 +449,6 @@ http_conn::HTTP_CODE http_conn::process_read() {
             } // 状态机：检查请求头
             case CHECK_STATE_HEADER: {
                 ret = parse_headers(text);
-                if (ret == REQUEST_BAD)
-                    return REQUEST_BAD;
                 break;
             }
             // 状态机：POST 检查内容
